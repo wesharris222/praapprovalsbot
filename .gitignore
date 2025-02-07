@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Deployment packages
+*.zip
+
+# Environment files
+.env
+
+# Log files
+*.log
+
+# IDE settings
+.vscode/

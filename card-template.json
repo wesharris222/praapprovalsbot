@@ -1,0 +1,135 @@
+{
+  "attachments": [
+    {
+      "contentType": "application/vnd.microsoft.card.adaptive",
+      "content": {
+        "type": "AdaptiveCard",
+        "version": "1.4",
+        "body": [
+          {
+            "type": "Image",
+            "url": "https://cdn.britannica.com/66/218266-050-77C3D624/Cookie-Monster-Sesame-Street-2016.jpg",
+            "size": "Large",
+            "style": "Person"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Attention Required: Approval Request",
+            "weight": "bolder",
+            "size": "medium"
+          },
+          {
+            "type": "TextBlock",
+            "text": "There is an approval request that requires your attention. Please review it at your earliest convenience.",
+            "wrap": true
+          },
+          {
+            "type": "TextBlock",
+            "text": "Event Details:",
+            "weight": "bolder",
+            "wrap": true,
+            "spacing": "medium"
+          },
+          {
+            "type": "TextBlock",
+            "text": "User: %%User%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "EventType: %%EventType%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "RequestID: %%RequestId%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Ticket ID: %%TicketId%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Timestamp: %%Timestamp%% UTC",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Hostname: %%HostName%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "File Path: %%FilePathObjectId%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Reason: %%Reason%%",
+            "wrap": true,
+            "spacing": "none"
+          },
+          {
+            "type": "TextBlock",
+            "text": "Application Group: %%ApplicationGroup%%",
+            "wrap": true,
+            "spacing": "none"
+          }
+        ],
+        "actions": [
+          {
+            "type": "Action.OpenUrl",
+            "title": "Review Request",
+            "style": "default",
+            "url": "https://demo2.pm.beyondtrustcloud.com/jit-access-management?decision=%5B%22Pending%22%5D&order=1&field=ticketNumber&paginationCount=25"
+          },
+          {
+            "type": "Action.Execute",
+            "title": "Approve Request",
+            "style": "positive",
+            "verb": "approval",
+            "data": {
+              "msteams": {
+                "type": "messageBack",
+                "text": "Approved"
+              },
+              "decision": "Approved",
+              "requestId": "%%RequestId%%",
+              "ticketId": "%%TicketId%%",
+              "user": "%%User%%",
+              "eventType": "%%EventType%%",
+              "timestamp": "%%Timestamp%%"
+            }
+          },
+          {
+            "type": "Action.Execute",
+            "title": "Deny Request",
+            "style": "destructive",
+            "verb": "denial",
+            "data": {
+              "msteams": {
+                "type": "messageBack",
+                "text": "Denied"
+              },
+              "decision": "Denied",
+              "requestId": "%%RequestId%%",
+              "ticketId": "%%TicketId%%",
+              "user": "%%User%%",
+              "eventType": "%%EventType%%",
+              "timestamp": "%%Timestamp%%"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

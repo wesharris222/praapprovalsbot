@@ -1,0 +1,67 @@
+{
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.14/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.14",
+    "version": "1.0.0",
+    "id": "8e3539ee-1272-4e58-8011-56f958174d9e",
+    "packageName": "com.btpmbot.approval",
+    "developer": {
+      "name": "BT Approval Bot",
+      "websiteUrl": "https://btpmbot.azurewebsites.net",
+      "privacyUrl": "https://btpmbot.azurewebsites.net/privacy",
+      "termsOfUseUrl": "https://btpmbot.azurewebsites.net/termsofuse"
+    },
+    "name": {
+      "short": "BT Approval Bot",
+      "full": "BeyondTrust Approval Bot"
+    },
+    "description": {
+      "short": "Bot for handling approval requests",
+      "full": "Bot for handling BeyondTrust approval requests through Teams"
+    },
+    "icons": {
+      "outline": "outline.png",
+      "color": "color.png"
+    },
+    "accentColor": "#FFFFFF",
+    "bots": [
+      {
+        "botId": "8e3539ee-1272-4e58-8011-56f958174d9e",
+        "scopes": [
+          "team",
+          "personal",
+          "groupchat"
+        ],
+        "supportsFiles": false,
+        "isNotificationOnly": false,
+        "commandLists": [
+          {
+            "scopes": [
+              "personal",
+              "team",
+              "groupchat"
+            ],
+            "commands": [
+              {
+                "title": "help",
+                "description": "Shows help information"
+              },
+              {
+                "title": "approve",
+                "description": "Approve the pending request"
+              },
+              {
+                "title": "deny",
+                "description": "Deny the pending request"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "permissions": [
+      "messageTeamMembers"
+    ],
+    "validDomains": [
+      "btpmbot.azurewebsites.net"
+    ]
+}
