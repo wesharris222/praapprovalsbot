@@ -29,20 +29,16 @@ class ApprovalBot extends TeamsActivityHandler {
         }
     }
 
-    // Handle Adaptive Card Action.Execute with enhanced error handling
+    // Handle Adaptive Card Action.Execute
     async onInvokeActivity(context) {
-        console.log('Invoke Activity Full Context:', JSON.stringify(context, null, 2));
+        console.log('Invoke Activity:', JSON.stringify(context.activity, null, 2));
 
         if (context.activity.name === 'adaptiveCard/action') {
             const actionData = context.activity.value.action.data;
-            console.log('Action Data:', JSON.stringify(actionData, null, 2));
             
             try {
                 const functionUrl = process.env.FUNCTIONAPP_URL;
                 const functionKey = process.env.FUNCTIONAPP_KEY;
-
-                // Log all input values received
-                console.log('Input Values:', context.activity.value);
 
                 const functionParams = new URLSearchParams({
                     decision: actionData.decision,
@@ -50,8 +46,7 @@ class ApprovalBot extends TeamsActivityHandler {
                     ticketId: actionData.ticketNumber
                 }).toString();
 
-                console.log('Function Parameters:', functionParams);
-                console.log('Function URL:', `${functionUrl}?${functionParams}`);
+                console.log('Calling function with params:', functionParams);
 
                 const response = await fetch(`${functionUrl}?${functionParams}`, {
                     method: 'POST',
@@ -62,7 +57,7 @@ class ApprovalBot extends TeamsActivityHandler {
                 });
 
                 const responseBody = await response.json();
-                console.log('Function Response:', JSON.stringify(responseBody, null, 2));
+                console.log('Function response:', JSON.stringify(responseBody, null, 2));
 
                 if (response.ok) {
                     return {
@@ -70,43 +65,35 @@ class ApprovalBot extends TeamsActivityHandler {
                         body: {
                             statusCode: 200,
                             type: 'application/vnd.microsoft.activity.message',
-                            value: `Request ${actionData.decision} successfully processed.`
+                            value: ` Request ${actionData.decision} successfully processed.`
                         }
                     };
                 } else {
-                    console.error('Function call failed. Status:', response.status);
-                    console.error('Response body:', JSON.stringify(responseBody, null, 2));
+                    console.error('Function call failed:', responseBody);
                     return {
                         status: 500,
                         body: {
                             statusCode: 500,
                             type: 'application/vnd.microsoft.activity.message',
-                            value: `Error processing request: ${JSON.stringify(responseBody)}`
+                            value: ` Error processing request: ${JSON.stringify(responseBody)}`
                         }
                     };
                 }
             } catch (error) {
-                console.error('Detailed error:', {
-                    message: error.message,
-                    stack: error.stack,
-                    context: JSON.stringify(context.activity, null, 2)
-                });
+                console.error('Error processing card action:', error);
                 return {
                     status: 500,
                     body: {
                         statusCode: 500,
                         type: 'application/vnd.microsoft.activity.message',
-                        value: `Error: ${error.message}`
+                        value: ` Error: ${error.message}`
                     }
                 };
             }
-        } else {
-            console.log('Unknown invoke activity type:', context.activity.name);
         }
         return null;
     }
 
-    // Rest of the class methods...
     async onConversationUpdateActivity(context) {
         await this.addConversationReference(context.activity);
         await super.onConversationUpdateActivity(context);

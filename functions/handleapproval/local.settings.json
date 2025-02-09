@@ -1,0 +1,10 @@
+﻿{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "BEYONDTRUST_BASE_URL": "https://demo2-services.pm.beyondtrustcloud.com",
+    "BEYONDTRUST_CLIENT_ID": "2a3bd08b4b864d77aab6e2b79641a3d1",
+    "BEYONDTRUST_CLIENT_SECRET": "Ag5TgM4VCujZZRyKAlNnOEY4EBDlomDRnzNEDqvqvV0="
+  }
+}

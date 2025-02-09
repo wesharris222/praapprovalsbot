@@ -7,9 +7,9 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "botbuilder": "^4.19.3",
-    "@azure/data-tables": "^13.2.2",
-    "express": "^4.18.2",
-    "node-fetch": "^2.6.9"
+    "@azure/data-tables": "^13.3.0",
+    "botbuilder": "^4.23.2",
+    "express": "^4.21.2",
+    "node-fetch": "^2.7.0"
   }
 }
