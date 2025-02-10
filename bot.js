@@ -29,7 +29,6 @@ class ApprovalBot extends TeamsActivityHandler {
         }
     }
 
-    // Handle Adaptive Card Action.Execute with enhanced error handling
     async onInvokeActivity(context) {
         console.log('Invoke Activity Full Context:', JSON.stringify(context, null, 2));
 
@@ -43,6 +42,7 @@ class ApprovalBot extends TeamsActivityHandler {
 
                 // Log all input values received
                 console.log('Input Values:', context.activity.value);
+                console.log('User Context:', context.activity.from);
 
                 // Get message from input, default to "Not specified" if empty
                 const message = actionData.approval_message || "Not specified";
@@ -53,12 +53,17 @@ class ApprovalBot extends TeamsActivityHandler {
                     duration = actionData.duration_seconds.toString();
                 }
 
+                // Extract username from context
+                const username = context.activity.from.name || 'Unknown User';
+                console.log('Username captured:', username);
+
                 const functionParams = new URLSearchParams({
                     decision: actionData.decision,
                     requestId: actionData.requestId,
                     ticketId: actionData.ticketNumber,
                     message: message,
-                    duration: duration
+                    duration: duration,
+                    username: username
                 }).toString();
 
                 console.log('Function Parameters:', functionParams);
@@ -81,7 +86,7 @@ class ApprovalBot extends TeamsActivityHandler {
                         body: {
                             statusCode: 200,
                             type: 'application/vnd.microsoft.activity.message',
-                            value: `Request ${actionData.decision} successfully processed.`
+                            value: `Request ${actionData.decision} successfully processed by ${username}.`
                         }
                     };
                 } else {
@@ -117,6 +122,7 @@ class ApprovalBot extends TeamsActivityHandler {
         return null;
     }
 
+    // Rest of the class methods remain unchanged
     async onConversationUpdateActivity(context) {
         await this.addConversationReference(context.activity);
         await super.onConversationUpdateActivity(context);
