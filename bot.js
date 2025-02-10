@@ -44,10 +44,21 @@ class ApprovalBot extends TeamsActivityHandler {
                 // Log all input values received
                 console.log('Input Values:', context.activity.value);
 
+                // Get message from input, default to "Not specified" if empty
+                const message = actionData.approval_message || "Not specified";
+                
+                // Determine duration based on selection
+                let duration = "Once";
+                if (actionData.duration_type === "seconds" && actionData.duration_seconds) {
+                    duration = actionData.duration_seconds.toString();
+                }
+
                 const functionParams = new URLSearchParams({
                     decision: actionData.decision,
                     requestId: actionData.requestId,
-                    ticketId: actionData.ticketNumber
+                    ticketId: actionData.ticketNumber,
+                    message: message,
+                    duration: duration
                 }).toString();
 
                 console.log('Function Parameters:', functionParams);
@@ -106,7 +117,6 @@ class ApprovalBot extends TeamsActivityHandler {
         return null;
     }
 
-    // Rest of the class methods...
     async onConversationUpdateActivity(context) {
         await this.addConversationReference(context.activity);
         await super.onConversationUpdateActivity(context);

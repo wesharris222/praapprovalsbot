@@ -1,42 +1,42 @@
-﻿const fetch = require('node-fetch');
+const fetch = require('node-fetch');
 
 async function getBeyondTrustToken(context) {
-  try {
-    context.log('Starting getBeyondTrustToken');
-    const tokenUrl = `${process.env.BEYONDTRUST_BASE_URL}/oauth/connect/token`;
+    try {
+        context.log('Starting getBeyondTrustToken');
+        const tokenUrl = `${process.env.BEYONDTRUST_BASE_URL}/oauth/connect/token`;
 
-    context.log(`BEYONDTRUST_BASE_URL: ${process.env.BEYONDTRUST_BASE_URL}`);
-    context.log(`BEYONDTRUST_CLIENT_ID: ${process.env.BEYONDTRUST_CLIENT_ID}`);
-    context.log(`BEYONDTRUST_CLIENT_SECRET: ${process.env.BEYONDTRUST_CLIENT_SECRET}`);
+        context.log(`BEYONDTRUST_BASE_URL: ${process.env.BEYONDTRUST_BASE_URL}`);
+        context.log(`BEYONDTRUST_CLIENT_ID: ${process.env.BEYONDTRUST_CLIENT_ID}`);
+        context.log(`BEYONDTRUST_CLIENT_SECRET: ${process.env.BEYONDTRUST_CLIENT_SECRET}`);
 
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_id', process.env.BEYONDTRUST_CLIENT_ID);
-    params.append('client_secret', process.env.BEYONDTRUST_CLIENT_SECRET);
+        const params = new URLSearchParams();
+        params.append('grant_type', 'client_credentials');
+        params.append('client_id', process.env.BEYONDTRUST_CLIENT_ID);
+        params.append('client_secret', process.env.BEYONDTRUST_CLIENT_SECRET);
 
-    context.log(`Constructed Token URL: ${tokenUrl}`);
-    context.log(`Token Request Body: ${params.toString()}`);
+        context.log(`Constructed Token URL: ${tokenUrl}`);
+        context.log(`Token Request Body: ${params.toString()}`);
 
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    });
+        const response = await fetch(tokenUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params.toString()
+        });
 
-    context.log(`Token endpoint response status: ${response.status}`);
-    if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`Token request failed with status ${response.status}. Response: ${errorBody}`);
+        context.log(`Token endpoint response status: ${response.status}`);
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`Token request failed with status ${response.status}. Response: ${errorBody}`);
+        }
+        const data = await response.json();
+        context.log(`Token response data: ${JSON.stringify(data)}`);
+        return data.access_token;
+    } catch (error) {
+        context.log.error('Error in getBeyondTrustToken:', error);
+        throw error;
     }
-    const data = await response.json();
-    context.log(`Token response data: ${JSON.stringify(data)}`);
-    return data.access_token;
-  } catch (error) {
-    context.log.error('Error in getBeyondTrustToken:', error);
-    throw error;
-  }
 }
 
 module.exports = async function (context, req) {
@@ -50,8 +50,10 @@ module.exports = async function (context, req) {
         const requestId = req.query.requestId;
         const ticketId = req.query.ticketId;
         const username = req.query.username || 'Unknown User';
+        const message = req.query.message || 'Not specified';
+        const duration = req.query.duration || 'Once';
         
-        context.log('Parsed inputs:', { decision, requestId, ticketId, username });
+        context.log('Parsed inputs:', { decision, requestId, ticketId, username, message, duration });
 
         if (!requestId || !ticketId) {
             context.log.error('Missing required parameters');
@@ -77,10 +79,10 @@ module.exports = async function (context, req) {
             status: decision === 'Approved' ? '2000' : '2001',
             decision: decision,
             decisionPerformedByUser: username,
-            duration: "Once",
+            duration: duration,
             itsmRequestId: requestId,
             decisionTime: currentTime,
-            message: "handled in teams",
+            message: message,
             systemId: requestId,
             ticketId: ticketId,
             ticketUrl: ticketUrl
