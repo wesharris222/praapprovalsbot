@@ -73,7 +73,7 @@ module.exports = async function (context, req) {
         const currentTime = new Date().toISOString().replace('T', ' ').replace(/\.\d+Z$/, '');
 
         const numericTicket = ticketId.replace(/^[A-Za-z]+0*/, '');
-        const ticketUrl = `https://demo2.pm.beyondtrustcloud.com/jit-access-management/details/${numericTicket}`;
+        const ticketUrl = `${process.env.BEYONDTRUST_BASE_URL}/jit-access-management/details/${numericTicket}`;
 
         const payload = {
             status: decision === 'Approved' ? '2000' : '2001',
