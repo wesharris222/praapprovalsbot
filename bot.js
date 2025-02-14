@@ -1,4 +1,4 @@
-const { TeamsActivityHandler, MessageFactory } = require('botbuilder');
+﻿const { TeamsActivityHandler, MessageFactory } = require('botbuilder');
 const { TableClient } = require('@azure/data-tables');
 const fetch = require('node-fetch');
 
@@ -27,6 +27,32 @@ class ApprovalBot extends TeamsActivityHandler {
             console.error('Error creating table:', err);
             throw err;
         }
+    }
+
+    async onInstallationUpdate(context) {
+        console.log('Installation update activity:', context.activity);
+        if (context.activity.action === 'add') {
+            await this.addConversationReference(context.activity);
+            await context.sendActivity("Hi! I'm the approvals bot. I'll notify you of any approval requests.");
+        }
+    }
+
+    async onConversationUpdateActivity(context) {
+        await this.addConversationReference(context.activity);
+        
+        if (context.activity.membersAdded && context.activity.membersAdded.length > 0) {
+            for (let idx in context.activity.membersAdded) {
+                if (context.activity.membersAdded[idx].id === context.activity.recipient.id) {
+                    if (context.activity.conversation.conversationType === 'channel') {
+                        await context.sendActivity("Hi! I'm the approvals bot. I'll notify this channel of any approval requests.");
+                    } else {
+                        await context.sendActivity("Hi! I'm the approvals bot. I'll notify you of any approval requests.");
+                    }
+                }
+            }
+        }
+        
+        await super.onConversationUpdateActivity(context);
     }
 
     async onInvokeActivity(context) {
@@ -120,12 +146,6 @@ class ApprovalBot extends TeamsActivityHandler {
             console.log('Unknown invoke activity type:', context.activity.name);
         }
         return null;
-    }
-
-    // Rest of the class methods remain unchanged
-    async onConversationUpdateActivity(context) {
-        await this.addConversationReference(context.activity);
-        await super.onConversationUpdateActivity(context);
     }
 
     async addConversationReference(activity) {
