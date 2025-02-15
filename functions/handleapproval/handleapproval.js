@@ -1,27 +1,45 @@
+const fetch = require('node-fetch');
+
 module.exports = async function (context, req) {
     try {
-        context.log('PRA approval handler started');
+        context.log('handleapproval function started');
         context.log('Request query:', JSON.stringify(req.query));
+        context.log('Request body:', JSON.stringify(req.body));
 
-        const decision = req.query.decision;
+        const decisionInput = req.query.decision;
         const requestId = req.query.requestId;
         const responseUrl = req.query.responseUrl;
+        const username = req.query.username || 'Unknown User';
         const message = req.query.message || '';
+        
+        context.log('Parsed inputs:', { decisionInput, requestId, responseUrl, username, message });
 
-        if (!requestId || !responseUrl || !decision) {
-            throw new Error('Missing required parameters');
+        if (!requestId || !responseUrl || !decisionInput) {
+            context.log.error('Missing required parameters');
+            context.res = {
+                status: 400,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: {
+                    error: `Missing required parameters: ${!requestId ? 'requestId' : !responseUrl ? 'responseUrl' : 'decision'}`
+                }
+            };
+            return;
         }
 
-        // Prepare response for PRA
         const payload = {
             response_id: requestId,
-            response: decision,
+            response: decisionInput,
             message: message
         };
 
-        context.log('Sending response to PRA:', JSON.stringify(payload));
+        context.log(`Full API Call Details:`);
+        context.log(`POST ${responseUrl}`);
+        context.log(`Headers: { "Content-Type": "application/json" }`);
+        context.log(`Body: ${JSON.stringify(payload)}`);
 
-        const response = await fetch(responseUrl, {
+        const apiResponse = await fetch(responseUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -29,20 +47,30 @@ module.exports = async function (context, req) {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) {
-            throw new Error(`PRA API responded with status: ${response.status}`);
+        if (!apiResponse.ok) {
+            const errorText = await apiResponse.text();
+            throw new Error(`API responded with status: ${apiResponse.status}, body: ${errorText}`);
         }
 
         context.res = {
             status: 200,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: {
-                message: `Request ${decision} successfully processed`
+                message: `Request ${decisionInput} successfully processed by ${username}`
             }
         };
+        
+        context.log('Function completed successfully');
     } catch (error) {
-        context.log.error('Error in PRA approval handler:', error);
+        context.log.error('Error in handleapproval function:', error);
+        context.log.error('Error stack:', error.stack);
         context.res = {
             status: 500,
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: {
                 error: error.message
             }
