@@ -1,47 +1,8 @@
-const path = require('path');
-const express = require('express');
-const { BotFrameworkAdapter } = require('botbuilder');
-const ApprovalBot = require('./bot');
-
-// Create adapter
-const adapter = new BotFrameworkAdapter({
-    appId: process.env.MicrosoftAppId,
-    appPassword: process.env.MicrosoftAppPassword
-});
-
-// Create bot instance
-const bot = new ApprovalBot();
-
-// Enhanced error handler
-adapter.onTurnError = async (context, error) => {
-    console.error(`\n [onTurnError] unhandled error: ${error}`);
-    console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        activity: context.activity,
-        error: error
-    });
-    await context.sendActivity('Oops. Something went wrong!');
-};
-
-// Create HTTP server
-const app = express();
-app.use(express.json());
-
-// Listen for incoming activities
-app.post('/api/messages', (req, res) => {
-    console.log('Received message activity:', JSON.stringify(req.body, null, 2));
-    adapter.processActivity(req, res, async (context) => {
-        await bot.run(context);
-    });
-});
-
-// Enhanced webhook endpoint
+// Previous code remains the same until the webhook endpoint
 app.post('/api/webhook', async (req, res) => {
     try {
-        console.log('=== WEBHOOK REQUEST RECEIVED ===');
+        console.log('=== PRA WEBHOOK REQUEST RECEIVED ===');
         console.log('Request Body:', JSON.stringify(req.body, null, 2));
-        console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
 
         const conversationReferences = await bot.getAllConversationReferences();
         if (!conversationReferences || conversationReferences.length === 0) {
@@ -49,42 +10,77 @@ app.post('/api/webhook', async (req, res) => {
             throw new Error('No conversation references found');
         }
 
-        console.log('Found conversation references:', conversationReferences.length);
-
-        // Process placeholders in the card
-        const processedCard = JSON.parse(JSON.stringify(req.body));
-        const placeholders = {
-            '%%User%%': req.body.user || 'Not specified',
-            '%%EventType%%': req.body.eventType || 'Not specified',
-            '%%RequestId%%': req.body.requestId || 'Not specified',
-            '%%Timestamp%%': req.body.timestamp || new Date().toISOString(),
-            '%%HostName%%': req.body.hostname || 'Not specified',
-            '%%TicketNumber%%': req.body.ticketNumber || 'Not specified',
-            '%%FilePathObjectId%%': req.body.filePathObjectId || 'Not specified',
-            '%%Reason%%': req.body.reason || 'Not specified',
-            '%%ApplicationGroup%%': req.body.applicationGroup || 'Not specified',
-            '%%NumericTicket%%': (req.body.ticketNumber || '').replace(/^[A-Za-z]+0*/, '')
+        // Create card data from PRA request
+        const cardData = {
+            requestId: req.body.request_id,
+            ticketId: req.body.ticket_id,
+            hostname: req.body.jump_item?.computer_name || 'Not specified',
+            jumpItemType: req.body.jump_item?.type || 'Not specified',
+            username: req.body.user?.username || 'Not specified',
+            userEmail: req.body.user?.email_address || 'Not specified',
+            jumpItemGroup: req.body.jump_item?.group || 'Not specified',
+            responseUrl: req.body.response_url
         };
 
-        console.log('Processing placeholders:', placeholders);
+        // Create Teams card
+        const card = {
+            "type": "AdaptiveCard",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "PRA Access Approval Request"
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        { "title": "Request ID:", "value": cardData.requestId },
+                        { "title": "Ticket ID:", "value": cardData.ticketId },
+                        { "title": "Hostname:", "value": cardData.hostname },
+                        { "title": "Access Type:", "value": cardData.jumpItemType },
+                        { "title": "Requester:", "value": cardData.username },
+                        { "title": "Email:", "value": cardData.userEmail },
+                        { "title": "Jump Group:", "value": cardData.jumpItemGroup }
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": "Approve",
+                    "data": {
+                        "decision": "allow",
+                        "requestId": cardData.requestId,
+                        "responseUrl": cardData.responseUrl
+                    },
+                    "style": "positive"
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Deny",
+                    "data": {
+                        "decision": "deny",
+                        "requestId": cardData.requestId,
+                        "responseUrl": cardData.responseUrl
+                    },
+                    "style": "destructive"
+                }
+            ],
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.2"
+        };
 
-        // Replace placeholders in the card JSON
-        const cardJson = JSON.stringify(processedCard);
-        const processedCardJson = Object.entries(placeholders).reduce(
-            (acc, [key, value]) => acc.replace(new RegExp(key, 'g'), value),
-            cardJson
-        );
-
-        console.log('Processed card JSON:', processedCardJson);
-
-        const finalCard = JSON.parse(processedCardJson);
-
-        // Send message to all stored conversations
+        // Send to all conversations
         for (const reference of conversationReferences) {
             try {
-                console.log('Sending to conversation:', reference.conversation.id);
                 await adapter.continueConversation(reference, async (context) => {
-                    await context.sendActivity({ attachments: finalCard.attachments });
+                    await context.sendActivity({
+                        attachments: [{
+                            contentType: "application/vnd.microsoft.card.adaptive",
+                            content: card
+                        }]
+                    });
                 });
             } catch (err) {
                 console.error(`Error sending to conversation ${reference.conversation.id}:`, err);
@@ -93,16 +89,7 @@ app.post('/api/webhook', async (req, res) => {
 
         res.status(200).send('Notifications sent successfully');
     } catch (error) {
-        console.error('Detailed webhook error:', {
-            message: error.message,
-            stack: error.stack,
-            body: req.body
-        });
+        console.error('Webhook error:', error);
         res.status(500).send(error.message);
     }
-});
-
-const port = process.env.PORT || 3978;
-app.listen(port, () => {
-    console.log(`\n${bot.constructor.name} listening at http://localhost:${port}`);
 });
