@@ -59,7 +59,7 @@ class ApprovalBot extends TeamsActivityHandler {
         console.log('Invoke Activity Full Context:', JSON.stringify(context, null, 2));
 
         if (context.activity.name === 'adaptiveCard/action') {
-            const action = context.activity.value;
+            const action = context.activity.value.action;
             console.log('Action Data:', JSON.stringify(action, null, 2));
             
             try {
@@ -70,9 +70,6 @@ class ApprovalBot extends TeamsActivityHandler {
                 console.log('Input Values:', context.activity.value);
                 console.log('User Context:', context.activity.from);
 
-                // Get message from input, default to empty string
-                const message = action.data.message || '';
-
                 // Extract username from context
                 const username = context.activity.from.name || 'Unknown User';
                 console.log('Username captured:', username);
@@ -81,7 +78,6 @@ class ApprovalBot extends TeamsActivityHandler {
                     decision: action.data.decision,
                     requestId: action.data.requestId,
                     responseUrl: action.data.responseUrl,
-                    message: message,
                     username: username
                 }).toString();
 
@@ -99,8 +95,9 @@ class ApprovalBot extends TeamsActivityHandler {
                 const responseBody = await response.json();
                 console.log('Function Response:', JSON.stringify(responseBody, null, 2));
 
-                if (response.ok) {
-                    return {
+                return {
+                    status: 200,
+                    body: {
                         statusCode: 200,
                         type: 'application/vnd.microsoft.card.adaptive',
                         value: {
@@ -114,11 +111,17 @@ class ApprovalBot extends TeamsActivityHandler {
                                 }
                             ]
                         }
-                    };
-                } else {
-                    console.error('Function call failed. Status:', response.status);
-                    console.error('Response body:', JSON.stringify(responseBody, null, 2));
-                    return {
+                    }
+                };
+            } catch (error) {
+                console.error('Detailed error:', {
+                    message: error.message,
+                    stack: error.stack,
+                    context: JSON.stringify(context.activity, null, 2)
+                });
+                return {
+                    status: 500,
+                    body: {
                         statusCode: 500,
                         type: 'application/vnd.microsoft.card.adaptive',
                         value: {
@@ -127,37 +130,14 @@ class ApprovalBot extends TeamsActivityHandler {
                             body: [
                                 {
                                     type: "TextBlock",
-                                    text: `Error processing request: ${JSON.stringify(responseBody)}`,
+                                    text: `Error: ${error.message}`,
                                     wrap: true
                                 }
                             ]
                         }
-                    };
-                }
-            } catch (error) {
-                console.error('Detailed error:', {
-                    message: error.message,
-                    stack: error.stack,
-                    context: JSON.stringify(context.activity, null, 2)
-                });
-                return {
-                    statusCode: 500,
-                    type: 'application/vnd.microsoft.card.adaptive',
-                    value: {
-                        type: "AdaptiveCard",
-                        version: "1.4",
-                        body: [
-                            {
-                                type: "TextBlock",
-                                text: `Error: ${error.message}`,
-                                wrap: true
-                            }
-                        ]
                     }
                 };
             }
-        } else {
-            console.log('Unknown invoke activity type:', context.activity.name);
         }
         return null;
     }

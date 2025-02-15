@@ -41,8 +41,12 @@ app.post('/api/messages', (req, res) => {
 app.post('/api/webhook', async (req, res) => {
     try {
         console.log('=== PRA WEBHOOK REQUEST RECEIVED ===');
-        console.log('Request Body:', JSON.stringify(req.body, null, 2));
+        console.log('Raw Body:', req.body);
+        console.log('Request Body Type:', typeof req.body);
         console.log('Request Headers:', JSON.stringify(req.headers, null, 2));
+
+        // Log all available properties
+        console.log('Available Properties:', Object.keys(req.body));
 
         const conversationReferences = await bot.getAllConversationReferences();
         if (!conversationReferences || conversationReferences.length === 0) {
@@ -52,21 +56,69 @@ app.post('/api/webhook', async (req, res) => {
 
         console.log('Found conversation references:', conversationReferences.length);
 
-        // Create card data from PRA request
+        // Parse form data - handle both urlencoded and json
+        let requestData = req.body;
+        if (typeof requestData === 'string') {
+            try {
+                requestData = JSON.parse(requestData);
+            } catch (e) {
+                // If it's not JSON, try parsing URLEncoded
+                const params = new URLSearchParams(requestData);
+                requestData = {};
+                for (const [key, value] of params) {
+                    try {
+                        requestData[key] = JSON.parse(value);
+                    } catch {
+                        requestData[key] = value;
+                    }
+                }
+            }
+        }
+
+        // Log parsed data
+        console.log('Parsed Request Data:', JSON.stringify(requestData, null, 2));
+
+        // Try to parse nested objects that might be strings
+        if (typeof requestData.jump_item === 'string') {
+            try {
+                requestData.jump_item = JSON.parse(requestData.jump_item);
+            } catch (e) {
+                console.log('Could not parse jump_item as JSON:', e);
+            }
+        }
+        if (typeof requestData.user === 'string') {
+            try {
+                requestData.user = JSON.parse(requestData.user);
+            } catch (e) {
+                console.log('Could not parse user as JSON:', e);
+            }
+        }
+
+        // Create card data from PRA request with all fields
         const cardData = {
-            requestId: req.body.request_id || 'Not provided',
-            ticketId: req.body.ticket_id || 'Not provided',
-            hostname: req.body.jump_item && req.body.jump_item.computer_name || 'Not provided',
-            jumpItemType: req.body.jump_item && req.body.jump_item.type || 'Not provided',
-            username: req.body.user && req.body.user.username || 'Not provided',
-            userEmail: req.body.user && req.body.user.email_address || 'Not provided',
-            jumpItemGroup: req.body.jump_item && req.body.jump_item.group || 'Not provided',
-            responseUrl: req.body.response_url || 'Not provided'
+            requestId: requestData.request_id || 'Not provided',
+            ticketId: requestData.ticket_id || 'Not provided',
+            responseUrl: requestData.response_url || 'Not provided',
+            // Jump Item details
+            hostname: requestData.jump_item?.computer_name || requestData['jump_item.computer_name'] || 'Not provided',
+            jumpItemType: requestData.jump_item?.type || requestData['jump_item.type'] || 'Not provided',
+            jumpItemComments: requestData.jump_item?.comments || requestData['jump_item.comments'] || 'Not provided',
+            jumpItemGroup: requestData.jump_item?.group || requestData['jump_item.group'] || 'Not provided',
+            jumpItemTags: requestData.jump_item?.tag || requestData['jump_item.tag'] || 'Not provided',
+            jumpPointName: requestData.jump_item?.jumpoint_name || requestData['jump_item.jumpoint_name'] || 'Not provided',
+            publicIp: requestData.jump_item?.public_ip || requestData['jump_item.public_ip'] || 'Not provided',
+            privateIp: requestData.jump_item?.private_ip || requestData['jump_item.private_ip'] || 'Not provided',
+            // User details
+            userId: requestData.user?.id || requestData['user.id'] || 'Not provided',
+            username: requestData.user?.username || requestData['user.username'] || 'Not provided',
+            userPublicName: requestData.user?.public_display_name || requestData['user.public_display_name'] || 'Not provided',
+            userPrivateName: requestData.user?.private_display_name || requestData['user.private_display_name'] || 'Not provided',
+            userEmail: requestData.user?.email_address || requestData['user.email_address'] || 'Not provided'
         };
 
         console.log('Card Data:', JSON.stringify(cardData, null, 2));
 
-        // Create Teams card
+        // Create Teams card with all fields
         const card = {
             "type": "AdaptiveCard",
             "body": [
@@ -74,7 +126,15 @@ app.post('/api/webhook', async (req, res) => {
                     "type": "TextBlock",
                     "size": "Medium",
                     "weight": "Bolder",
-                    "text": "PRA Access Approval Request"
+                    "text": "PRA Access Approval Request",
+                    "wrap": true
+                },
+                {
+                    "type": "TextBlock",
+                    "size": "Default",
+                    "text": "Jump Item Details",
+                    "weight": "Bolder",
+                    "wrap": true
                 },
                 {
                     "type": "FactSet",
@@ -83,9 +143,30 @@ app.post('/api/webhook', async (req, res) => {
                         { "title": "Ticket ID", "value": cardData.ticketId },
                         { "title": "Hostname", "value": cardData.hostname },
                         { "title": "Access Type", "value": cardData.jumpItemType },
-                        { "title": "Requester", "value": cardData.username },
-                        { "title": "Email", "value": cardData.userEmail },
-                        { "title": "Jump Group", "value": cardData.jumpItemGroup }
+                        { "title": "Jump Group", "value": cardData.jumpItemGroup },
+                        { "title": "Comments", "value": cardData.jumpItemComments },
+                        { "title": "Tags", "value": cardData.jumpItemTags },
+                        { "title": "Jumpoint", "value": cardData.jumpPointName },
+                        { "title": "Public IP", "value": cardData.publicIp },
+                        { "title": "Private IP", "value": cardData.privateIp }
+                    ]
+                },
+                {
+                    "type": "TextBlock",
+                    "size": "Default",
+                    "text": "User Details",
+                    "weight": "Bolder",
+                    "wrap": true,
+                    "spacing": "Medium"
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        { "title": "User ID", "value": cardData.userId },
+                        { "title": "Username", "value": cardData.username },
+                        { "title": "Public Name", "value": cardData.userPublicName },
+                        { "title": "Private Name", "value": cardData.userPrivateName },
+                        { "title": "Email", "value": cardData.userEmail }
                     ]
                 }
             ],
