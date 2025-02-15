@@ -27,6 +27,7 @@ adapter.onTurnError = async (context, error) => {
 // Create HTTP server
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Listen for incoming activities
 app.post('/api/messages', (req, res) => {
@@ -35,6 +36,12 @@ app.post('/api/messages', (req, res) => {
         await bot.run(context);
     });
 });
+
+// Enhanced webhook endpoint
+// Modify Express setup to handle urlencoded data
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true }));
 
 // Enhanced webhook endpoint
 app.post('/api/webhook', async (req, res) => {
@@ -51,85 +58,96 @@ app.post('/api/webhook', async (req, res) => {
 
         console.log('Found conversation references:', conversationReferences.length);
 
-        // Process placeholders in the card
-        const processedCard = JSON.parse(JSON.stringify(req.body));
-        const placeholders = {
-            '%%RequestId%%': req.body.request_id || 'Not specified',
-            '%%TicketId%%': req.body.ticket_id || 'Not specified',
-            '%%Hostname%%': req.body.jump_item?.computer_name || 'Not specified',
-            '%%JumpType%%': req.body.jump_item?.type || 'Not specified',
-            '%%Username%%': req.body.user?.username || 'Not specified',
-            '%%Email%%': req.body.user?.email_address || 'Not specified',
-            '%%JumpGroup%%': req.body.jump_item?.group || 'Not specified',
-            '%%ResponseUrl%%': req.body.response_url || 'Not specified'
+        // Create card data from PRA request
+        const cardData = {
+            requestId: req.body.request_id || 'Not provided',
+            ticketId: req.body.ticket_id || 'Not provided',
+            hostname: req.body.jump_item && req.body.jump_item.computer_name || 'Not provided',
+            jumpItemType: req.body.jump_item && req.body.jump_item.type || 'Not provided',
+            username: req.body.user && req.body.user.username || 'Not provided',
+            userEmail: req.body.user && req.body.user.email_address || 'Not provided',
+            jumpItemGroup: req.body.jump_item && req.body.jump_item.group || 'Not provided',
+            responseUrl: req.body.response_url || 'Not provided'
         };
 
-        console.log('Processing placeholders:', placeholders);
+        console.log('Card Data:', JSON.stringify(cardData, null, 2));
 
         // Create Teams card
+        const card = {
+            "type": "AdaptiveCard",
+            "body": [
+                {
+                    "type": "TextBlock",
+                    "size": "Medium",
+                    "weight": "Bolder",
+                    "text": "PRA Access Approval Request"
+                },
+                {
+                    "type": "FactSet",
+                    "facts": [
+                        { "title": "Request ID", "value": cardData.requestId },
+                        { "title": "Ticket ID", "value": cardData.ticketId },
+                        { "title": "Hostname", "value": cardData.hostname },
+                        { "title": "Access Type", "value": cardData.jumpItemType },
+                        { "title": "Requester", "value": cardData.username },
+                        { "title": "Email", "value": cardData.userEmail },
+                        { "title": "Jump Group", "value": cardData.jumpItemGroup }
+                    ]
+                }
+            ],
+            "actions": [
+                {
+                    "type": "Action.Execute",
+                    "title": "Approve",
+                    "verb": "approve",
+                    "data": {
+                        "decision": "allow",
+                        "requestId": cardData.requestId,
+                        "responseUrl": cardData.responseUrl
+                    },
+                    "style": "positive"
+                },
+                {
+                    "type": "Action.Execute",
+                    "title": "Deny",
+                    "verb": "deny",
+                    "data": {
+                        "decision": "deny",
+                        "requestId": cardData.requestId,
+                        "responseUrl": cardData.responseUrl
+                    },
+                    "style": "destructive"
+                }
+            ],
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.4"
+        };
+
         const finalCard = {
             attachments: [{
                 contentType: "application/vnd.microsoft.card.adaptive",
-                content: {
-                    type: "AdaptiveCard",
-                    version: "1.4",
-                    body: [
-                        {
-                            type: "TextBlock",
-                            size: "Medium",
-                            weight: "Bolder",
-                            text: "PRA Access Approval Request"
-                        },
-                        {
-                            type: "FactSet",
-                            facts: [
-                                { title: "Request ID:", value: placeholders['%%RequestId%%'] },
-                                { title: "Ticket ID:", value: placeholders['%%TicketId%%'] },
-                                { title: "Hostname:", value: placeholders['%%Hostname%%'] },
-                                { title: "Access Type:", value: placeholders['%%JumpType%%'] },
-                                { title: "Requester:", value: placeholders['%%Username%%'] },
-                                { title: "Email:", value: placeholders['%%Email%%'] },
-                                { title: "Jump Group:", value: placeholders['%%JumpGroup%%'] }
-                            ]
-                        }
-                    ],
-                    actions: [
-                        {
-                            type: "Action.Execute",
-                            title: "Approve",
-                            verb: "approve",
-                            data: {
-                                decision: "allow",
-                                requestId: placeholders['%%RequestId%%'],
-                                responseUrl: placeholders['%%ResponseUrl%%']
-                            },
-                            style: "positive"
-                        },
-                        {
-                            type: "Action.Execute",
-                            title: "Deny",
-                            verb: "deny",
-                            data: {
-                                decision: "deny",
-                                requestId: placeholders['%%RequestId%%'],
-                                responseUrl: placeholders['%%ResponseUrl%%']
-                            },
-                            style: "destructive"
-                        }
-                    ]
-                }
+                content: card
             }]
         };
 
-        console.log('Processed card:', JSON.stringify(finalCard, null, 2));
-
-        // Send message to all stored conversations
+        // Send to all conversations
         for (const reference of conversationReferences) {
             try {
                 console.log('Sending to conversation:', reference.conversation.id);
                 await adapter.continueConversation(reference, async (context) => {
                     await context.sendActivity(finalCard);
                 });
+            } catch (err) {
+                console.error(`Error sending to conversation ${reference.conversation.id}:`, err);
+            }
+        }
+
+        res.status(200).send('Notifications sent successfully');
+    } catch (error) {
+        console.error('Webhook error:', error);
+        res.status(500).send(error.message);
+    }
+});
             } catch (err) {
                 console.error(`Error sending to conversation ${reference.conversation.id}:`, err);
             }
@@ -150,3 +168,4 @@ const port = process.env.PORT || 3978;
 app.listen(port, () => {
     console.log(`\n${bot.constructor.name} listening at http://localhost:${port}`);
 });
+
