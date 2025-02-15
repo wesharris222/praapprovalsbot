@@ -1,7 +1,7 @@
 {
-  "name": "pra-approval-bot",
+  "name": "teams-approval-bot",
   "version": "1.0.0",
-  "description": "Teams PRA Approval Bot",
+  "description": "Teams Approval Bot",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
@@ -11,8 +11,5 @@
     "botbuilder": "^4.23.2",
     "express": "^4.21.2",
     "node-fetch": "^2.7.0"
-  },
-  "engines": {
-    "node": "~20"
   }
 }

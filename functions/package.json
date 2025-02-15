@@ -1,1 +1,10 @@
-{"name":"teams-approval-func","version":"1.0.0","dependencies":{"node-fetch":"^2.6.9"},"engines":{"node":"~20"}}
+{
+  "name": "pra-approval-func",
+  "version": "1.0.0",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  },
+  "engines": {
+    "node": "~20"
+  }
+}
